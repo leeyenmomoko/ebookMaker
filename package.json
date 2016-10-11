@@ -1,0 +1,21 @@
+{
+  "name": "ck101-novels",
+  "version": "1.0.0",
+  "description": "parse ck101 novels and make it to mobi file.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Lee Yen",
+  "license": "ISC",
+  "dependencies": {
+    "babel-plugin-syntax-async-functions": "*",
+    "babel-plugin-transform-regenerator": "*",
+    "babel-polyfill": "*",
+    "babel-preset-es2015": "*",
+    "babel-preset-es2016": "*",
+    "request": "^2.65.0",
+    "cheerio": "^0.22.0",
+    "request": "^2.75.0"
+  }
+}
