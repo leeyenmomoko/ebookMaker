@@ -13,8 +13,10 @@
       "i":"",
       "div.t_attach":"",
       "span":"",
-      "<br>\n<br>":"<br />",
-      "ignore_js_op":""
+      "br":"cleanDuplicate",
+      "ignore_js_op":"",
+      "script":"",
+      "noscript":""
     },
     "link":"http://ck101.com/thread-[serial]-[page]-1.html",
     "title_spliter" : ["章", "節"]
