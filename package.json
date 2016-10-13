@@ -15,7 +15,7 @@
     "babel-preset-es2015": "*",
     "babel-preset-es2016": "*",
     "cheerio": "^0.22.0",
-    "quick-epub": "^1.0.0",
+    "epub-gen": "0.0.16",
     "request": "^2.75.0"
   }
 }

@@ -1,7 +1,7 @@
 require("babel-polyfill");
 let request = require("request");
 let cheerio = require('cheerio');
-let epub = require('quick-epub');
+var Epub = require("epub-gen")
 let settings = require('./settings.json');
 
 // http://ck101.com/thread-1321314-1-1.html
@@ -147,40 +147,43 @@ let makeBook = async (serial, source, title, author, method) => {
   let datas = await loadSource(serial, source, method);
 
   //console.log(datas);
-  var data = {
-    lang: 'zh-TW',
-    title: title,
-    author: [author],
-    publisher: 'Sample Publisher',
-    description: 'none',
-    contents: [],
-    identifiers: {},
-    dates: {
-      published: new Date().toISOString().split('.')[0]+ 'Z',
-      modified: new Date().toISOString().split('.')[0]+ 'Z'
-    },
-    appendChapterTitles: true,
-    output: 'output/' + title + '.epub'
+  var option = {
+    title: title, // *Required, title of the book.
+    author: author, // *Required, name of the author.
+    publisher: "Sample Publisher", // optional
+    cover: "", // Url or File path, both ok.
+    content: []
   };
+  // var data = {
+  //   lang: 'zh-TW',
+  //   title: title,
+  //   author: [author],
+  //   publisher: 'Sample Publisher',
+  //   description: 'none',
+  //   contents: [],
+  //   identifiers: {},
+  //   dates: {
+  //     published: new Date().toISOString().split('.')[0]+ 'Z',
+  //     modified: new Date().toISOString().split('.')[0]+ 'Z'
+  //   },
+  //   appendChapterTitles: true,
+  //   output: 'output/' + title + '.epub'
+  // };
   //console.log(data);
   //data.author.push(author);
 
   let chapter = 0;
   for(let page in datas){
     for(let articleIndex in datas[page]){
-      data.contents.push({
+      option.content.push({
         "title": datas[page][articleIndex].title,
         "data": datas[page][articleIndex].content,
-        "id": chapter++
+        "author": author
       });
     }
   }
 
-  epub.createFile(data).then(function(){
-   console.log('book done.');
-  }).catch(function(error){
-   console.error(error);
-  });
+  new Epub(option, "output/" + title +".epub");
   console.timeEnd('Some_Name_Here');
 };
 

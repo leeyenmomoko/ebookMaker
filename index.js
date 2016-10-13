@@ -3,7 +3,7 @@
 require("babel-polyfill");
 var request = require("request");
 var cheerio = require('cheerio');
-var epub = require('quick-epub');
+var Epub = require("epub-gen");
 var settings = require('./settings.json');
 
 // http://ck101.com/thread-1321314-1-1.html
@@ -201,7 +201,7 @@ var loadSource = function _callee(serial, source, method) {
 };
 
 var makeBook = function _callee2(serial, source, title, author, method) {
-  var datas, data, chapter, page, articleIndex;
+  var datas, option, chapter, page, articleIndex;
   return regeneratorRuntime.async(function _callee2$(_context2) {
     while (1) {
       switch (_context2.prev = _context2.next) {
@@ -214,21 +214,28 @@ var makeBook = function _callee2(serial, source, title, author, method) {
 
 
           //console.log(datas);
-          data = {
-            lang: 'zh-TW',
-            title: title,
-            author: [author],
-            publisher: 'Sample Publisher',
-            description: 'none',
-            contents: [],
-            identifiers: {},
-            dates: {
-              published: new Date().toISOString().split('.')[0] + 'Z',
-              modified: new Date().toISOString().split('.')[0] + 'Z'
-            },
-            appendChapterTitles: true,
-            output: 'output/' + title + '.epub'
+          option = {
+            title: title, // *Required, title of the book.
+            author: author, // *Required, name of the author.
+            publisher: "Sample Publisher", // optional
+            cover: "", // Url or File path, both ok.
+            content: []
           };
+          // var data = {
+          //   lang: 'zh-TW',
+          //   title: title,
+          //   author: [author],
+          //   publisher: 'Sample Publisher',
+          //   description: 'none',
+          //   contents: [],
+          //   identifiers: {},
+          //   dates: {
+          //     published: new Date().toISOString().split('.')[0]+ 'Z',
+          //     modified: new Date().toISOString().split('.')[0]+ 'Z'
+          //   },
+          //   appendChapterTitles: true,
+          //   output: 'output/' + title + '.epub'
+          // };
           //console.log(data);
           //data.author.push(author);
 
@@ -236,19 +243,15 @@ var makeBook = function _callee2(serial, source, title, author, method) {
 
           for (page in datas) {
             for (articleIndex in datas[page]) {
-              data.contents.push({
+              option.content.push({
                 "title": datas[page][articleIndex].title,
                 "data": datas[page][articleIndex].content,
-                "id": chapter++
+                "author": author
               });
             }
           }
 
-          epub.createFile(data).then(function () {
-            console.log('book done.');
-          }).catch(function (error) {
-            console.error(error);
-          });
+          new Epub(option, "output/" + title + ".epub");
           console.timeEnd('Some_Name_Here');
 
         case 8:
