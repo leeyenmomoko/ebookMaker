@@ -1,4 +1,5 @@
 require("babel-polyfill");
+
 let request = require("request");
 let cheerio = require('cheerio');
 var Epub = require("epub-gen")
@@ -20,8 +21,13 @@ let chkTitle = (str) => {
 };
 
 let getPages = (serial, source) => {
+  console.log(settings);
+  console.log('aa' + serial + source);
+  let url = settings[source].link.replace('[serial]', serial).replace('[page]', 1);
+    console.log(url);
   let promise = new Promise((resolve, reject) => {
     let url = settings[source].link.replace('[serial]', serial).replace('[page]', 1);
+    console.log(url);
     let req = request(url, (error, response, body) => {
       if (!error && response.statusCode == 200) {
         let $ = cheerio.load(body);
@@ -115,6 +121,7 @@ let getContent = (serial, source, page) => {
 
 
 let loadSource = async (serial, source, method) => {
+  console.log('starting load page');
   let allContents = [];
   let lastPage = await getPages(serial, source);
   let allPormises = [];
@@ -144,6 +151,7 @@ let loadSource = async (serial, source, method) => {
 };
 
 let makeBook = async (serial, source, title, author, method) => {
+  console.log('start makeBook');
   let datas = await loadSource(serial, source, method);
 
   //console.log(datas);
@@ -187,6 +195,54 @@ let makeBook = async (serial, source, title, author, method) => {
   console.timeEnd('Some_Name_Here');
 };
 
-console.time('Some_Name_Here');
+console.log('Loading function');
 
-makeBook(serial, source, title, author, 'promise');
+/**
+ * Demonstrates a simple HTTP endpoint using API Gateway. You have full
+ * access to the request and response payload, including headers and
+ * status code.
+ *
+ * To scan a DynamoDB table, make a GET request with the TableName as a
+ * query string parameter. To put, update, or delete an item, make a POST,
+ * PUT, or DELETE request respectively, passing in the payload to the
+ * DynamoDB API as a JSON body.
+ */
+exports.handler = (event, context, callback) => {
+    //console.log('Received event:', JSON.stringify(event, null, 2));
+
+    const done = (err, res) => callback(null, {
+        statusCode: err ? '400' : '200',
+        body: err ? err.message : JSON.stringify(res),
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+
+    switch (event.httpMethod) {
+        case 'DELETE':
+            break;
+        case 'GET':
+            break;
+        case 'POST':
+
+            console.log(event);
+            makeBook(event.body.serial, event.body.source, event.body.title, event.body.author, 'promise');
+            break;
+        case 'PUT':
+            dynamo.updateItem(JSON.parse(event.body), done);
+            break;
+        default:
+            done(new Error(`Unsupported method "${event.httpMethod}"`));
+    }
+};
+let event = {
+  "httpMethod": "POST",
+  "body": {
+    "serial": "1321314",
+    "source": "ck101",
+    "title": "聖戒",
+    "author": "遊魂"
+  }
+};
+exports.handler(event, '', '');
+

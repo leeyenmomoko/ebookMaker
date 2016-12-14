@@ -1,6 +1,7 @@
 "use strict";
 
 require("babel-polyfill");
+
 var request = require("request");
 var cheerio = require('cheerio');
 var Epub = require("epub-gen");
@@ -22,8 +23,13 @@ var chkTitle = function chkTitle(str) {
 };
 
 var getPages = function getPages(serial, source) {
+  console.log(settings);
+  console.log('aa' + serial + source);
+  var url = settings[source].link.replace('[serial]', serial).replace('[page]', 1);
+  console.log(url);
   var promise = new Promise(function (resolve, reject) {
     var url = settings[source].link.replace('[serial]', serial).replace('[page]', 1);
+    console.log(url);
     var req = request(url, function (error, response, body) {
       if (!error && response.statusCode == 200) {
         (function () {
@@ -127,18 +133,19 @@ var loadSource = function _callee(serial, source, method) {
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
+          console.log('starting load page');
           allContents = [];
-          _context.next = 3;
+          _context.next = 4;
           return regeneratorRuntime.awrap(getPages(serial, source));
 
-        case 3:
+        case 4:
           lastPage = _context.sent;
           allPormises = [];
           page = 1;
 
-        case 6:
+        case 7:
           if (!(page <= lastPage)) {
-            _context.next = 20;
+            _context.next = 21;
             break;
           }
 
@@ -146,42 +153,42 @@ var loadSource = function _callee(serial, source, method) {
           pageContents = void 0;
 
           if (!(method === 'await')) {
-            _context.next = 16;
+            _context.next = 17;
             break;
           }
 
-          _context.next = 12;
+          _context.next = 13;
           return regeneratorRuntime.awrap(getContent(serial, source, page));
 
-        case 12:
+        case 13:
           pageContents = _context.sent;
 
           allContents[page - 1] = pageContents;
-          _context.next = 17;
+          _context.next = 18;
           break;
 
-        case 16:
+        case 17:
           if (method === 'promise') {
             pageContents = getContent(serial, source, page);
             allPormises[page - 1] = pageContents;
           }
 
-        case 17:
+        case 18:
           page++;
-          _context.next = 6;
+          _context.next = 7;
           break;
 
-        case 20:
+        case 21:
           if (!(method === 'await')) {
-            _context.next = 24;
+            _context.next = 25;
             break;
           }
 
           return _context.abrupt("return", allContents);
 
-        case 24:
+        case 25:
           if (!(method === 'promise')) {
-            _context.next = 26;
+            _context.next = 27;
             break;
           }
 
@@ -192,7 +199,7 @@ var loadSource = function _callee(serial, source, method) {
             });
           }));
 
-        case 26:
+        case 27:
         case "end":
           return _context.stop();
       }
@@ -206,10 +213,11 @@ var makeBook = function _callee2(serial, source, title, author, method) {
     while (1) {
       switch (_context2.prev = _context2.next) {
         case 0:
-          _context2.next = 2;
+          console.log('start makeBook');
+          _context2.next = 3;
           return regeneratorRuntime.awrap(loadSource(serial, source, method));
 
-        case 2:
+        case 3:
           datas = _context2.sent;
 
 
@@ -254,7 +262,7 @@ var makeBook = function _callee2(serial, source, title, author, method) {
           new Epub(option, "output/" + title + ".epub");
           console.timeEnd('Some_Name_Here');
 
-        case 8:
+        case 9:
         case "end":
           return _context2.stop();
       }
@@ -262,6 +270,55 @@ var makeBook = function _callee2(serial, source, title, author, method) {
   }, null, undefined);
 };
 
-console.time('Some_Name_Here');
+console.log('Loading function');
 
-makeBook(serial, source, title, author, 'promise');
+/**
+ * Demonstrates a simple HTTP endpoint using API Gateway. You have full
+ * access to the request and response payload, including headers and
+ * status code.
+ *
+ * To scan a DynamoDB table, make a GET request with the TableName as a
+ * query string parameter. To put, update, or delete an item, make a POST,
+ * PUT, or DELETE request respectively, passing in the payload to the
+ * DynamoDB API as a JSON body.
+ */
+exports.handler = function (event, context, callback) {
+  //console.log('Received event:', JSON.stringify(event, null, 2));
+
+  var done = function done(err, res) {
+    return callback(null, {
+      statusCode: err ? '400' : '200',
+      body: err ? err.message : JSON.stringify(res),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+  };
+
+  switch (event.httpMethod) {
+    case 'DELETE':
+      break;
+    case 'GET':
+      break;
+    case 'POST':
+
+      console.log(event);
+      makeBook(event.body.serial, event.body.source, event.body.title, event.body.author, 'promise');
+      break;
+    case 'PUT':
+      dynamo.updateItem(JSON.parse(event.body), done);
+      break;
+    default:
+      done(new Error("Unsupported method \"" + event.httpMethod + "\""));
+  }
+};
+var event = {
+  "httpMethod": "POST",
+  "body": {
+    "serial": "1321314",
+    "source": "ck101",
+    "title": "聖戒",
+    "author": "遊魂"
+  }
+};
+exports.handler(event, '', '');

@@ -1,19 +1,76 @@
 # Changelog
 
 > **Tags:**
-> - [Breaking Change]
-> - [Spec Compliancy]
-> - [New Feature]
-> - [Bug Fix]
-> - [Documentation]
-> - [Internal]
-> - [Polish]
+> - :boom:       [Breaking Change]
+> - :eyeglasses: [Spec Compliancy]
+> - :rocket:     [New Feature]
+> - :bug:        [Bug Fix]
+> - :memo:       [Documentation]
+> - :house:      [Internal]
+> - :nail_care:  [Polish]
 
 > Semver Policy: https://github.com/babel/babylon#semver
 
 _Note: Gaps between patch versions are faulty, broken or test releases._
 
 See the [Babel Changelog](https://github.com/babel/babel/blob/master/CHANGELOG.md) for the pre-6.8.0 version Changelog.
+
+## v6.11.6 (2016-10-12)
+
+### :bug: Bug Fix/Regression
+
+Fix crash when exporting with destructuring and sparse array ([#170](https://github.com/babel/babylon/pull/170)) (Jeroen Engels)
+
+```js
+// was failing with `Cannot read property 'type' of null` because of null identifiers
+export const { foo: [ ,, qux7 ] } = bar;
+````
+
+## v6.11.5 (2016-10-12)
+
+### :eyeglasses: Spec Compliancy
+
+Fix: Check for duplicate named exports in exported destructuring assignments ([#144](https://github.com/babel/babylon/pull/144)) (Kai Cataldo)
+
+```js
+// `foo` has already been exported. Exported identifiers must be unique. (2:20)
+export function foo() {};
+export const { a: [{foo}] } = bar;
+```
+
+Fix: Check for duplicate named exports in exported rest elements/properties ([#164](https://github.com/babel/babylon/pull/164)) (Kai Cataldo)
+
+```js
+// `foo` has already been exported. Exported identifiers must be unique. (2:22)
+export const foo = 1;
+export const [bar, ...foo] = baz;
+```
+
+### :bug: Bug Fix
+
+Fix: Allow identifier `async` for default param in arrow expression ([#165](https://github.com/babel/babylon/pull/165)) (Kai Cataldo)
+
+```js
+// this is ok now
+const test = ({async = true}) => {};
+```
+
+### :nail_care: Polish
+
+Babylon will now print out the token it's expecting if there's a `SyntaxError` ([#150](https://github.com/babel/babylon/pull/150)) (Daniel Tschinder)
+
+```bash
+# So in the case of a missing ending curly (`}`)
+Module build failed: SyntaxError: Unexpected token, expected } (30:0)
+  28 |   }
+  29 |
+> 30 |
+     | ^
+```
+
+## v6.11.4 (2016-10-03)
+
+Temporary rollback for erroring on trailing comma with spread (#154) (Henry Zhu)
 
 ## v6.11.3 (2016-10-01)
 
