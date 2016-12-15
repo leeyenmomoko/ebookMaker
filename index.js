@@ -1,12 +1,20 @@
 "use strict";
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 require("babel-polyfill");
 
+var querystring = require('querystring');
 var request = require("request");
 var cheerio = require('cheerio');
 var Epub = require("epub-gen");
+var fs = require("fs");
 var settings = require('./settings.json');
 var outputPath = '/tmp/';
+var tempDir = '/tmp/';
+
+var AWS = require('aws-sdk');
+var s3 = new AWS.S3({ apiVersion: '2006-03-01' });
 
 // http://ck101.com/thread-1321314-1-1.html
 var serial = '1321314';
@@ -24,13 +32,8 @@ var chkTitle = function chkTitle(str) {
 };
 
 var getPages = function getPages(serial, source) {
-  console.log(settings);
-  console.log('aa' + serial + source);
-  var url = settings[source].link.replace('[serial]', serial).replace('[page]', 1);
-  console.log(url);
   var promise = new Promise(function (resolve, reject) {
     var url = settings[source].link.replace('[serial]', serial).replace('[page]', 1);
-    console.log(url);
     var req = request(url, function (error, response, body) {
       if (!error && response.statusCode == 200) {
         (function () {
@@ -208,7 +211,7 @@ var loadSource = function _callee(serial, source, method) {
   }, null, undefined);
 };
 
-var makeBook = function _callee2(serial, source, title, author, method) {
+var makeBook = function _callee2(serial, source, title, author, method, done) {
   var datas, option, chapter, page, articleIndex;
   return regeneratorRuntime.async(function _callee2$(_context2) {
     while (1) {
@@ -229,26 +232,8 @@ var makeBook = function _callee2(serial, source, title, author, method) {
             publisher: "Sample Publisher", // optional
             cover: "", // Url or File path, both ok.
             content: [],
-            tempDir: '/tmp/'
+            tempDir: tempDir
           };
-          // var data = {
-          //   lang: 'zh-TW',
-          //   title: title,
-          //   author: [author],
-          //   publisher: 'Sample Publisher',
-          //   description: 'none',
-          //   contents: [],
-          //   identifiers: {},
-          //   dates: {
-          //     published: new Date().toISOString().split('.')[0]+ 'Z',
-          //     modified: new Date().toISOString().split('.')[0]+ 'Z'
-          //   },
-          //   appendChapterTitles: true,
-          //   output: 'output/' + title + '.epub'
-          // };
-          //console.log(data);
-          //data.author.push(author);
-
           chapter = 0;
 
           for (page in datas) {
@@ -263,6 +248,34 @@ var makeBook = function _callee2(serial, source, title, author, method) {
           //let epub = new Epub(option, );
           new Epub(option, outputPath + title + ".epub").promise.then(function () {
             console.log("Ebook Generated Successfully!");
+
+            var stream = fs.createReadStream(outputPath + title + ".epub");
+            var params = {
+              Bucket: 'leeyen-ebooks', /* required */
+              Body: stream, /* required */
+              Key: 'epubs/' + title + ".epub", /* required */
+              ACL: 'public-read',
+              Tagging: querystring.stringify({ author: author, name: title })
+            };
+
+            s3.upload(params, function (err, data) {
+              if (err) {
+                console.log(err, err.stack); // an error occurred
+              } else {
+                console.log(data); // successful response
+                console.log('actually done!');
+                //done(null, { url: data.Location });
+
+                var res = {
+                  "statusCode": 200,
+                  "headers": {},
+                  "body": JSON.stringify({ url: data.Location }) // body must be returned as a string
+                };
+
+                done.succeed(res);
+                //done(null, { url: data.Location });
+              }
+            });
           }, function (err) {
             console.error("Failed to generate Ebook because of ", err);
           });
@@ -305,11 +318,27 @@ exports.handler = function (event, context, callback) {
     case 'DELETE':
       break;
     case 'GET':
+      var data = {
+        results: [1, 2, 3],
+        success: true
+      };
+      event.tyoe = _typeof(event.body);
+      data = event;
+
+      // here's the object we need to return
+      var res = {
+        "statusCode": 200,
+        "headers": {},
+        "body": JSON.stringify(data) // body must be returned as a string
+      };
+
+      context.succeed(res); // we must use this callback to return to amazon api gateway
       break;
     case 'POST':
 
       console.log(event);
-      makeBook(event.body.serial, event.body.source, event.body.title, event.body.author, 'promise');
+      event.body = _typeof(event.body) === 'object' ? event.body : JSON.parse(event.body);
+      makeBook(event.body.serial, event.body.source, event.body.title, event.body.author, 'promise', context);
       break;
     case 'PUT':
       dynamo.updateItem(JSON.parse(event.body), done);
@@ -329,5 +358,6 @@ if (process.argv.length >= 3 && process.argv[2] === 'local') {
     }
   };
   outputPath = 'output/';
+  tempDir = 'output/';
   exports.handler(event, '', '');
 }

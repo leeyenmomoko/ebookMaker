@@ -1,11 +1,16 @@
 require("babel-polyfill");
 
+const querystring = require('querystring');
 let request = require("request");
 let cheerio = require('cheerio');
-var Epub = require("epub-gen")
+let Epub = require("epub-gen");
+let fs = require("fs");
 let settings = require('./settings.json');
 let outputPath = '/tmp/';
 let tempDir = '/tmp/';
+
+let AWS = require('aws-sdk');
+let s3 = new AWS.S3({apiVersion: '2006-03-01'});
 
 // http://ck101.com/thread-1321314-1-1.html
 let serial = '1321314';
@@ -23,13 +28,8 @@ let chkTitle = (str) => {
 };
 
 let getPages = (serial, source) => {
-  console.log(settings);
-  console.log('aa' + serial + source);
-  let url = settings[source].link.replace('[serial]', serial).replace('[page]', 1);
-    console.log(url);
   let promise = new Promise((resolve, reject) => {
     let url = settings[source].link.replace('[serial]', serial).replace('[page]', 1);
-    console.log(url);
     let req = request(url, (error, response, body) => {
       if (!error && response.statusCode == 200) {
         let $ = cheerio.load(body);
@@ -152,7 +152,7 @@ let loadSource = async (serial, source, method) => {
   }
 };
 
-let makeBook = async (serial, source, title, author, method) => {
+let makeBook = async (serial, source, title, author, method, done) => {
   console.log('start makeBook');
   let datas = await loadSource(serial, source, method);
 
@@ -165,23 +165,6 @@ let makeBook = async (serial, source, title, author, method) => {
     content: [],
     tempDir: tempDir
   };
-  // var data = {
-  //   lang: 'zh-TW',
-  //   title: title,
-  //   author: [author],
-  //   publisher: 'Sample Publisher',
-  //   description: 'none',
-  //   contents: [],
-  //   identifiers: {},
-  //   dates: {
-  //     published: new Date().toISOString().split('.')[0]+ 'Z',
-  //     modified: new Date().toISOString().split('.')[0]+ 'Z'
-  //   },
-  //   appendChapterTitles: true,
-  //   output: 'output/' + title + '.epub'
-  // };
-  //console.log(data);
-  //data.author.push(author);
 
   let chapter = 0;
   for(let page in datas){
@@ -195,10 +178,40 @@ let makeBook = async (serial, source, title, author, method) => {
 
   //let epub = new Epub(option, );
   new Epub(option, outputPath + title +".epub").promise.then(function(){
-    console.log("Ebook Generated Successfully!")
+    console.log("Ebook Generated Successfully!");
+
+    let stream = fs.createReadStream(outputPath + title + ".epub");
+    let params = {
+      Bucket: 'leeyen-ebooks', /* required */
+      Body: stream, /* required */
+      Key: 'epubs/' + title + ".epub", /* required */
+      ACL: 'public-read',
+      Tagging: querystring.stringify({author: author, name:title})
+    };
+
+    s3.upload(params, function(err, data) {
+      if (err){
+        console.log(err, err.stack); // an error occurred
+      }
+      else{
+        console.log(data);           // successful response
+        console.log('actually done!');
+        //done(null, { url: data.Location });
+
+        const res = {
+          "statusCode": 200,
+          "headers": {},
+          "body": JSON.stringify({ url: data.Location })    // body must be returned as a string
+        };
+
+        done.succeed(res);
+        //done(null, { url: data.Location });
+      }
+    });
+
   }, function(err){
     console.error("Failed to generate Ebook because of ", err)
-  })
+  });
   //console.timeEnd('Some_Name_Here');
 };
 
@@ -226,20 +239,36 @@ exports.handler = (event, context, callback) => {
     });
 
     switch (event.httpMethod) {
-        case 'DELETE':
-            break;
-        case 'GET':
-            break;
-        case 'POST':
+      case 'DELETE':
+        break;
+      case 'GET':
+        var data = {
+           results: [1,2,3],
+           success: true
+        };
+        event.tyoe = typeof event.body;
+        data = event;
 
-            console.log(event);
-            makeBook(event.body.serial, event.body.source, event.body.title, event.body.author, 'promise');
-            break;
-        case 'PUT':
-            dynamo.updateItem(JSON.parse(event.body), done);
-            break;
-        default:
-            done(new Error(`Unsupported method "${event.httpMethod}"`));
+        // here's the object we need to return
+        const res = {
+            "statusCode": 200,
+            "headers": {},
+            "body": JSON.stringify(data)    // body must be returned as a string
+        };
+
+        context.succeed(res); // we must use this callback to return to amazon api gateway
+        break;
+      case 'POST':
+
+        console.log(event);
+        event.body = typeof event.body === 'object' ? event.body : JSON.parse(event.body);
+        makeBook(event.body.serial, event.body.source, event.body.title, event.body.author, 'promise', context);
+        break;
+      case 'PUT':
+        dynamo.updateItem(JSON.parse(event.body), done);
+        break;
+      default:
+        done(new Error(`Unsupported method "${event.httpMethod}"`));
     }
 };
 if(process.argv.length >= 3 && process.argv[2] === 'local'){

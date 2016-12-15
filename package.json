@@ -9,6 +9,7 @@
   "author": "Lee Yen",
   "license": "ISC",
   "dependencies": {
+    "aws-sdk": "^2.7.14",
     "babel-plugin-syntax-async-functions": "*",
     "babel-plugin-transform-regenerator": "*",
     "babel-polyfill": "*",
