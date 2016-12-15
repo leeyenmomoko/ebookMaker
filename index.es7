@@ -4,6 +4,8 @@ let request = require("request");
 let cheerio = require('cheerio');
 var Epub = require("epub-gen")
 let settings = require('./settings.json');
+let outputPath = '/tmp/';
+let tempDir = '/tmp/';
 
 // http://ck101.com/thread-1321314-1-1.html
 let serial = '1321314';
@@ -160,7 +162,8 @@ let makeBook = async (serial, source, title, author, method) => {
     author: author, // *Required, name of the author.
     publisher: "Sample Publisher", // optional
     cover: "", // Url or File path, both ok.
-    content: []
+    content: [],
+    tempDir: tempDir
   };
   // var data = {
   //   lang: 'zh-TW',
@@ -185,14 +188,18 @@ let makeBook = async (serial, source, title, author, method) => {
     for(let articleIndex in datas[page]){
       option.content.push({
         "title": datas[page][articleIndex].title,
-        "data": datas[page][articleIndex].content,
-        "author": author
+        "data": datas[page][articleIndex].content
       });
     }
   }
 
-  new Epub(option, "output/" + title +".epub");
-  console.timeEnd('Some_Name_Here');
+  //let epub = new Epub(option, );
+  new Epub(option, outputPath + title +".epub").promise.then(function(){
+    console.log("Ebook Generated Successfully!")
+  }, function(err){
+    console.error("Failed to generate Ebook because of ", err)
+  })
+  //console.timeEnd('Some_Name_Here');
 };
 
 console.log('Loading function');
@@ -235,14 +242,17 @@ exports.handler = (event, context, callback) => {
             done(new Error(`Unsupported method "${event.httpMethod}"`));
     }
 };
-let event = {
-  "httpMethod": "POST",
-  "body": {
-    "serial": "1321314",
-    "source": "ck101",
-    "title": "聖戒",
-    "author": "遊魂"
-  }
-};
-exports.handler(event, '', '');
-
+if(process.argv.length >= 3 && process.argv[2] === 'local'){
+  let event = {
+    "httpMethod": "POST",
+    "body": {
+      "serial": "3728942",
+      "source": "ck101",
+      "title": "未來天王",
+      "author": "陳詞懶調"
+    }
+  };
+  outputPath = 'output/';
+  tempDir = 'output/';
+  exports.handler(event, '', '');
+}

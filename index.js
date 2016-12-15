@@ -6,6 +6,7 @@ var request = require("request");
 var cheerio = require('cheerio');
 var Epub = require("epub-gen");
 var settings = require('./settings.json');
+var outputPath = '/tmp/';
 
 // http://ck101.com/thread-1321314-1-1.html
 var serial = '1321314';
@@ -227,7 +228,8 @@ var makeBook = function _callee2(serial, source, title, author, method) {
             author: author, // *Required, name of the author.
             publisher: "Sample Publisher", // optional
             cover: "", // Url or File path, both ok.
-            content: []
+            content: [],
+            tempDir: '/tmp/'
           };
           // var data = {
           //   lang: 'zh-TW',
@@ -253,16 +255,20 @@ var makeBook = function _callee2(serial, source, title, author, method) {
             for (articleIndex in datas[page]) {
               option.content.push({
                 "title": datas[page][articleIndex].title,
-                "data": datas[page][articleIndex].content,
-                "author": author
+                "data": datas[page][articleIndex].content
               });
             }
           }
 
-          new Epub(option, "output/" + title + ".epub");
-          console.timeEnd('Some_Name_Here');
+          //let epub = new Epub(option, );
+          new Epub(option, outputPath + title + ".epub").promise.then(function () {
+            console.log("Ebook Generated Successfully!");
+          }, function (err) {
+            console.error("Failed to generate Ebook because of ", err);
+          });
+          //console.timeEnd('Some_Name_Here');
 
-        case 9:
+        case 8:
         case "end":
           return _context2.stop();
       }
@@ -312,13 +318,16 @@ exports.handler = function (event, context, callback) {
       done(new Error("Unsupported method \"" + event.httpMethod + "\""));
   }
 };
-var event = {
-  "httpMethod": "POST",
-  "body": {
-    "serial": "1321314",
-    "source": "ck101",
-    "title": "聖戒",
-    "author": "遊魂"
-  }
-};
-exports.handler(event, '', '');
+if (process.argv.length >= 3 && process.argv[2] === 'local') {
+  var event = {
+    "httpMethod": "POST",
+    "body": {
+      "serial": "3728942",
+      "source": "ck101",
+      "title": "未來天王",
+      "author": "陳詞懶調"
+    }
+  };
+  outputPath = 'output/';
+  exports.handler(event, '', '');
+}
